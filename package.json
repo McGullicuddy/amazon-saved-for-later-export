@@ -1,0 +1,23 @@
+{
+  "name": "amazon-saved-for-later-export",
+  "version": "1.0.0",
+  "description": "A bookmarklet that saves your Amazon Saved for Later list as a JSON file. Runs in your browser, sends nothing anywhere.",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/McGullicuddy/amazon-saved-for-later-export.git"
+  },
+  "homepage": "https://mcgullicuddy.github.io/amazon-saved-for-later-export/",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node test/bookmarklet.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.62.0"
+  }
+}

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="A bookmark that saves your Amazon Saved for Later list as a JSON file. It runs in your browser and sends nothing anywhere." />
+    <title>Saved for Later export</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <!-- Built by scripts/build.mjs from site/index.html: its placeholders are
+         filled in at build time. This page loads no scripts. -->
+    <main>
+        <header>
+            <p class="eyebrow">Bookmarklet · v{{VERSION}}</p>
+            <h1>Amazon Saved for Later export</h1>
+            <p class="lede">
+                A bookmark that saves the <strong>Saved for Later</strong> list under your Amazon cart as
+                a JSON file. It runs in your browser, on the page you already have open, and sends
+                nothing anywhere.
+            </p>
+        </header>
+
+        <section aria-labelledby="install-heading">
+            <h2 id="install-heading">Install</h2>
+            <p>
+                Drag this button to your bookmarks bar. Can't see the bar? Press
+                <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> (<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> on a Mac).
+            </p>
+            <p class="install">
+                <a class="bookmarklet" href="{{BOOKMARKLET_HREF}}">Saved for Later → JSON</a>
+            </p>
+            <p class="note">
+                Can't drag? Create a new bookmark and paste the contents of
+                <a href="bookmarklet.txt">bookmarklet.txt</a> as its URL. On a phone, bookmarklets
+                are awkward at best; this is meant for a desktop browser.
+            </p>
+        </section>
+
+        <section aria-labelledby="use-heading">
+            <h2 id="use-heading">Use</h2>
+            <ol>
+                <li>Open your Amazon cart while logged in.</li>
+                <li>Click the bookmark. It scrolls through Saved for Later until every item has loaded.</li>
+                <li>When it says <em>Found N items</em>, click <strong>Download file</strong>. You get
+                    <code>amazon-saved-for-later-YYYY-MM-DD.json</code>.</li>
+            </ol>
+        </section>
+
+        <section aria-labelledby="output-heading">
+            <h2 id="output-heading">What's in the file</h2>
+<pre><code>{
+  "format": "amazon-saved-for-later",
+  "version": 2,
+  "exportedAt": "2026-01-15T18:30:00.000Z",
+  "store": "www.amazon.com",
+  "items": [
+    {
+      "asin": "B0ABCDEFGH",
+      "title": "Product title as shown in the cart",
+      "price": "$19.99",
+      "priceValue": 19.99,
+      "images": ["https://m.media-amazon.com/images/I/…jpg", "…"]
+    }
+  ]
+}</code></pre>
+            <p>
+                Every field is described in <a href="{{REPO_URL}}/blob/main/FORMAT.md">FORMAT.md</a>,
+                including the quirks of Amazon's picture URLs.
+            </p>
+        </section>
+
+        <section aria-labelledby="privacy-heading">
+            <h2 id="privacy-heading">Privacy</h2>
+            <ul>
+                <li><strong>No network requests.</strong> The bookmark reads the page and builds the file
+                    in your browser. Nothing is uploaded, and there is no server.</li>
+                <li><strong>No permissions.</strong> It isn't an extension. It runs only when you click
+                    it, and only on Amazon's own storefront addresses.</li>
+                <li><strong>Read it first.</strong> A bookmarklet runs with the same access as the page
+                    it runs on, so read the source before installing any of them. This one is
+                    <a href="{{REPO_URL}}/blob/main/src/bookmarklet.js">src/bookmarklet.js</a>, and the
+                    button above is built from it automatically on every change.</li>
+            </ul>
+        </section>
+
+        <section aria-labelledby="limits-heading">
+            <h2 id="limits-heading">Limits</h2>
+            <ul>
+                <li>It reads Amazon's page layout, which changes without notice. If it finds no items,
+                    <a href="{{REPO_URL}}/issues">open an issue</a>.</li>
+                <li>Tested on amazon.com. Other Amazon stores are accepted and should work, but are
+                    untested.</li>
+                <li>Prices are what the cart showed at export time.</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>
+            <a href="{{REPO_URL}}">Source on GitHub</a> · MIT license · {{SIZE_KB}} KB bookmark.
+            Not affiliated with or endorsed by Amazon.
+        </p>
+    </footer>
+</body>
+</html>

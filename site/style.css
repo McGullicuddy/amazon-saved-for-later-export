@@ -1,0 +1,176 @@
+/* Install page. One column of readable text and one obvious button. No web fonts: the page
+   makes no third-party requests, in keeping with what it is installing. */
+
+:root {
+    --bg: #fbfaf7;
+    --text: #1d2228;
+    --muted: #5b6470;
+    --rule: #e3e0d8;
+    --code-bg: #f1eee7;
+    --accent: #b4561c;
+    --accent-text: #ffffff;
+    --link: #1f5fa8;
+    color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #12161b;
+        --text: #e7e9ec;
+        --muted: #9aa3ad;
+        --rule: #2a313a;
+        --code-bg: #1b2128;
+        --accent: #e0894a;
+        --accent-text: #12161b;
+        --link: #8cbcf5;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+main,
+footer {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+main {
+    padding-top: 56px;
+}
+
+a {
+    color: var(--link);
+}
+
+a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+/* --- Header ------------------------------------------------------------- */
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font: 500 0.78rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0 0 16px;
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    line-height: 1.15;
+}
+
+.lede {
+    margin: 0;
+    color: var(--muted);
+    font-size: 1.08rem;
+}
+
+/* --- Sections ----------------------------------------------------------- */
+
+section {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+}
+
+h2 {
+    margin: 0 0 12px;
+    font-size: 1.2rem;
+}
+
+ol,
+ul {
+    padding-left: 1.3em;
+}
+
+li + li {
+    margin-top: 6px;
+}
+
+.note {
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+/* --- The bookmark button ------------------------------------------------ */
+
+/* It looks like a button because people need to grab it, but it stays a link: dragging an
+   <a> is how a bookmarklet gets onto the bookmarks bar. */
+.install {
+    margin: 20px 0;
+}
+
+.bookmarklet {
+    display: inline-block;
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: grab;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.bookmarklet:active {
+    cursor: grabbing;
+}
+
+/* --- Code --------------------------------------------------------------- */
+
+code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+pre {
+    overflow-x: auto;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: var(--code-bg);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+pre code {
+    padding: 0;
+    background: none;
+}
+
+/* Keyboard shortcuts in the install steps: a key-cap look built from the code tokens. */
+kbd {
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: nowrap;
+}
+
+/* --- Footer ------------------------------------------------------------- */
+
+footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    padding-bottom: 40px;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.85rem;
+}

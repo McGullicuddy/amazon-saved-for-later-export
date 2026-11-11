@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SYNTHETIC cart fixture (made-up products, not real Amazon data)</title>
+</head>
+<body>
+<!-- Imitates the shape of an Amazon cart page, only as far as the bookmarklet reads it.
+     Every product, price and ASIN here is invented. -->
+
+<form id="activeCartViewForm">
+  <h2>Shopping Cart</h2>
+  <!-- Active-cart items carry data-asin but no saved markers: must NOT be picked up. -->
+  <div data-asin="B0CART0001" data-price="9.99"><span class="sc-product-title">Active cart thing one</span></div>
+  <div data-asin="B0CART0002" data-price="4.50"><span class="sc-product-title">Active cart thing two</span></div>
+</form>
+
+<div id="sc-saved-cart">
+  <h2>Saved for Later (items)</h2>
+
+  <div data-itemtype="saved" data-asin="B0SAVED001" data-price="19.9">
+    <span class="sc-product-title"><span class="a-truncate-full">  Synthetic Widget
+      with   odd whitespace </span></span>
+    <img alt="widget" src="https://m.media-amazon.com/images/I/71abcDEF12L._AC_AA180_.jpg">
+  </div>
+
+  <div data-itemtype="saved" data-asin="b0saved002">
+    <span class="sc-product-title">Gadget that prices via text</span>
+    <span class="sc-product-price">$5.00</span>
+    <img alt="gadget" src="https://m.media-amazon.com/images/I/low.jpg" data-a-hires="https://m.media-amazon.com/images/I/81hiresXYZ._SX342_.png">
+  </div>
+
+  <div data-itemtype="saved" data-asin="B0SAVED003">
+    <span class="sc-product-title">&lt;img src=x onerror=window.__xss=1&gt; Hostile title</span>
+    <!-- no image at all -->
+  </div>
+
+  <div data-itemtype="saved" data-asin="B0SAVED004" data-price="oops">
+    <a href="/dp/B0SAVED004">Link-text title item</a>
+    <img alt="alt" src="https://evil.example.com/images/I/71abcDEF12L._AC_AA180_.jpg">
+  </div>
+
+  <!-- data-price="0" (as an unavailable item can carry) is not a price: no price text either, so null. -->
+  <div data-itemtype="saved" data-asin="B0SAVED005" data-price="0">
+    <span class="sc-product-title">Item with a nested recommendation</span>
+    <img alt="five" srcset="https://m.media-amazon.com/images/I/55small._AC_UL100_.jpg 1x, https://m.media-amazon.com/images/I/55big._AC_UL320_.jpg 2x" src="https://m.media-amazon.com/images/I/55tiny._AC_UL50_.jpg">
+    <!-- Must never be clicked: on real Amazon this navigates away. -->
+    <a id="like-this" href="/see-more-like-this">See more like this</a>
+    <div data-itemtype="saved" data-asin="B0NESTED01"><span class="sc-product-title">Nested recommendation</span></div>
+  </div>
+
+  <!-- (a) The data-asin element holds only the title; the picture sits in the enclosing row.
+       B0ROWIMG01 must find it by climbing one level. B0ROWNONE1 has no picture anywhere in
+       its own row; the next ancestor (the group) holds the neighbour's picture AND the
+       neighbour item, so the climb must stop there and give an empty list. -->
+  <div class="row-group">
+    <div class="row-a">
+      <img alt="row picture" src="https://m.media-amazon.com/images/I/row1._AC_UL200_.jpg">
+      <div data-itemtype="saved" data-asin="B0ROWIMG01"><span class="sc-product-title">Picture lives in the row</span></div>
+    </div>
+    <div class="row-b">
+      <div data-itemtype="saved" data-asin="B0ROWNONE1"><span class="sc-product-title">Row without a picture</span></div>
+    </div>
+  </div>
+
+  <!-- (b) Another host with a query string: kept raw, the importer decides. -->
+  <div data-itemtype="saved" data-asin="B0QUERY001">
+    <span class="sc-product-title">Query string picture</span>
+    <img alt="q" src="https://images-na.ssl-images-amazon.com/images/I/61qq1234.jpg?v=2&amp;sz=large">
+  </div>
+
+  <!-- (c) A data: placeholder in src must be skipped; the real URL is in data-src. -->
+  <div data-itemtype="saved" data-asin="B0DATASRC1">
+    <span class="sc-product-title">Lazy picture placeholder</span>
+    <img alt="p" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-src="https://m.media-amazon.com/images/I/lazy1._AC_UL200_.jpg">
+  </div>
+
+  <!-- (d) A badge comes first in the document, but sc-product-image candidates go first. -->
+  <div data-itemtype="saved" data-asin="B0BADGE001">
+    <span class="sc-product-title">Badge before product picture</span>
+    <img alt="badge" src="https://m.media-amazon.com/images/G/01/prime/badge._CB1_.png">
+    <img alt="main" class="sc-product-image" src="https://m.media-amazon.com/images/I/main1._AC_UL200_.jpg" data-old-hires="https://m.media-amazon.com/images/I/main1-old.jpg">
+  </div>
+
+  <!-- (e) Displayed price text wins over data-price, in any currency. -->
+  <div data-itemtype="saved" data-asin="B0PRICE001" data-price="15.5">
+    <span class="sc-product-title">Pound priced item</span>
+    <span class="sc-product-price">£12.34</span>
+  </div>
+
+  <!-- (f) "Price: $7.00" is not a bare price, so data-price is the fallback. -->
+  <div data-itemtype="saved" data-asin="B0PRICE002" data-price="7">
+    <span class="sc-product-title">Wordy price text item</span>
+    <span class="sc-product-price">Price: $7.00</span>
+  </div>
+
+  <!-- (g) A 400-character title must come through whole. -->
+  <div data-itemtype="saved" data-asin="B0LONGTTL1">
+    <span class="sc-product-title">Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word Long title word!</span>
+  </div>
+
+  <!-- (h) A European price text, symbol after the number. -->
+  <div data-itemtype="saved" data-asin="B0PRICE003">
+    <span class="sc-product-title">Euro priced item</span>
+    <span class="sc-product-price">19,99 €</span>
+  </div>
+
+  <!-- Duplicate of the first ASIN: the first one must win. -->
+  <div data-itemtype="saved" data-asin="B0SAVED001" data-price="1.00">
+    <span class="sc-product-title">Duplicate widget</span>
+  </div>
+
+  <!-- Outside any item: this is the one control the bookmarklet may click. -->
+  <button id="see-more" type="button">See more</button>
+</div>
+
+<script>
+  /* Detectable side effects for the harness. */
+  window.__likeClicked = false;
+  document.getElementById('like-this').addEventListener('click', function () {
+    window.__likeClicked = true;
+  });
+  window.__seeMoreClicks = 0;
+  document.getElementById('see-more').addEventListener('click', function () {
+    window.__seeMoreClicks++;
+    var container = document.getElementById('sc-saved-cart');
+    var btn = document.getElementById('see-more');
+    /* Lazy-load: four more items, then the control goes away. */
+    for (var i = 1; i <= 4; i++) {
+      var d = document.createElement('div');
+      d.setAttribute('data-itemtype', 'saved');
+      d.setAttribute('data-asin', i === 2 ? ' b0lazy0002 ' : 'B0LAZY000' + i);
+      d.setAttribute('data-price', '2' + i + '.25');
+      d.innerHTML = '<span class="sc-product-title"><span class="a-truncate-full">Lazy item ' + i + '</span></span>';
+      container.insertBefore(d, btn);
+    }
+    btn.remove();
+  });
+</script>
+</body>
+</html>

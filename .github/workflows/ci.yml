@@ -1,0 +1,72 @@
+# Test every push and pull request. On main, also rebuild the install page from
+# src/bookmarklet.js and publish it to GitHub Pages, so the button people drag is always the
+# code they can read in this repository.
+#
+# One-time repository setting: Settings > Pages > Source: "GitHub Actions".
+#
+# Supply chain: the published bookmarklet runs inside people's logged-in Amazon sessions, so
+# the job that builds and publishes it is kept as small as possible.
+# - Actions are pinned to full commit SHAs (the tag each SHA was taken from is in the
+#   comment), so a moved or hijacked tag can't change what runs. To update, look up the new
+#   tag's commit and replace both.
+# - Checkout doesn't leave the workflow token in .git/config (persist-credentials: false):
+#   nothing here pushes.
+# - The pages job installs no npm packages. scripts/build.mjs uses only Node's built-in
+#   modules, so the deploy never runs third-party package code.
+# - Plain `pull_request` (not `pull_request_target`): pull requests from forks get a read-only
+#   token and no secrets, and can't reach the pages job.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run build
+
+  pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    # Only this job can publish, and only from main.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
