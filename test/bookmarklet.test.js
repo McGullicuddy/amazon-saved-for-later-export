@@ -7,13 +7,16 @@
    --no-sandbox only because it loads nothing but our local fixture: every other request
    is blocked by the network guard below.
 
-   Network guard: every request from every page goes through one route. Only the fixture
-   page itself reaches the local server. Anything else is recorded and aborted. That covers
-   the fixture's synthetic picture URLs, which name real CDN hostnames, and anything the
-   bookmarklet might try to send, by any means: fetch, an <img>, a script, a navigation or a
-   popup. The test fails if a request is recorded after the page finished loading and the
-   bookmarklet started. A positive control proves the guard sees a request made from page
-   script.
+   Network guard: every request from every page goes through one route, and every WebSocket
+   through a second one. Service workers are blocked, since they could answer requests
+   without the route seeing them. Only an exact fixture load (a mapped host, the server's
+   port, /cart.html, no query string) reaches the local server. Anything else is recorded
+   and aborted. That covers the fixture's synthetic picture URLs, which name real CDN
+   hostnames, and anything the bookmarklet might try to send, by any means: fetch, an <img>, a
+   script, a WebSocket, a navigation or a popup. A request counts as the page's own only
+   while that page is being opened. Everything else counts as the bookmarklet's, and the test
+   fails if there is one. Positive controls prove the guard sees an image request and a
+   WebSocket made from page script.
 
    What is tested is what ships: the built (comment-stripped) source is evaluated in the
    page, and the file the "Download file" button produces is captured through Playwright's
@@ -24,12 +27,13 @@
    served over plain http at http://<host>:<port>/cart.html. The guard only checks the
    hostname. */
 import assert from 'node:assert';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { BuildError, buildBookmarklet, renderInstallPage } from '../scripts/build.mjs';
+import { BuildError, bookmarkletFile, buildBookmarklet, renderInstallPage } from '../scripts/build.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixture = readFileSync(join(ROOT, 'test', 'fixture-cart.html'));
@@ -42,27 +46,63 @@ function localDate() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/* `phase` is 'page load' while a page is opening, and 'bookmarklet' once it has settled.
-   The test runs one step at a time, so a single shared phase is unambiguous. */
-const network = { phase: 'page load', blocked: [] };
+/* Hostnames Chrome resolves to the local server (see "Hostname guard" above). */
+const MAPPED_HOSTS = ['www.amazon.com', 'www.amazon.co.uk', 'amazon.com.evil.example'];
+const FIXTURE_HOSTS = new Set([...MAPPED_HOSTS, '127.0.0.1']);
 
-function guardNetwork(context, port) {
-  return context.route('**/*', (route) => {
-    const url = new URL(route.request().url());
-    if (url.port === String(port) && url.pathname === '/cart.html') { return route.continue(); }
-    network.blocked.push({ phase: network.phase, url: url.href });
+/* What the network guard saw. `loading` holds the pages openFixture is opening right now:
+   their requests are the fixture's own. Everything else, including popups and requests
+   that can't be tied to a page, counts as the bookmarklet's, so the guard fails closed.
+   `control` marks the positive controls at the end. */
+const network = { blocked: [], loading: new WeakSet(), control: false };
+
+function phaseOf(request) {
+  if (network.control) { return 'control'; }
+  let page = null;
+  try { page = request.frame().page(); } catch { /* not from a page frame, e.g. a worker */ }
+  return page && network.loading.has(page) ? 'page load' : 'bookmarklet';
+}
+
+/* Only an exact fixture load passes, so nothing can be smuggled out to the local server
+   in a path or query string either. */
+function isFixtureLoad(url, port) {
+  return FIXTURE_HOSTS.has(url.hostname) && url.port === String(port) &&
+    url.pathname === '/cart.html' && url.search === '';
+}
+
+async function guardNetwork(context, port) {
+  await context.route('**/*', (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (isFixtureLoad(url, port)) { return route.continue(); }
+    network.blocked.push({ phase: phaseOf(request), url: url.href });
     return route.abort();
+  });
+  /* WebSockets don't pass through route(). Record each one and close it without ever
+     connecting. The fixture opens none, so outside a control every one is the bookmarklet's. */
+  await context.routeWebSocket(/.*/, (ws) => {
+    network.blocked.push({ phase: network.control ? 'control' : 'bookmarklet', url: ws.url() });
+    ws.close();
   });
 }
 
-/* Load the fixture, wait until its own (blocked) picture requests are over, then switch to
-   the bookmarklet phase. The fixture has no lazy-loaded pictures, so anything requested from
-   here on comes from the bookmarklet. */
+/* Positive controls: wait until the guard has recorded `url`. */
+async function blockedInControl(url) {
+  for (let i = 0; i < 50; i++) {
+    if (network.blocked.some((r) => r.phase === 'control' && r.url === url)) { return true; }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
+/* Load the fixture and wait until its own (blocked) picture requests are over. The fixture
+   has no lazy-loaded pictures, so anything the page requests after this comes from the
+   bookmarklet. */
 async function openFixture(page, host, port) {
-  network.phase = 'page load';
+  network.loading.add(page);
   await page.goto(`http://${host}:${port}/cart.html`);
   await page.waitForLoadState('networkidle');
-  network.phase = 'bookmarklet';
+  network.loading.delete(page);
 }
 
 /* Open the fixture under `host`, run the bookmarklet, click Download and return the parsed
@@ -98,7 +138,10 @@ async function main() {
   new Function(bookmarklet); /* parses as JavaScript (does not run it) */
   assert(!/\binnerHTML\b|\binsertAdjacentHTML\b|\bdocument\.write\b/.test(bookmarklet),
     'no HTML-string injection APIs in bookmarklet code');
-  assert(!/\bfetch\b|XMLHttpRequest|sendBeacon|WebSocket/.test(bookmarklet), 'no network APIs');
+  /* A first, cheap line of defence. The network guard in the browser run below is the real
+     check, since a name can be disguised (window['Web' + 'Socket']). */
+  assert(!/\bfetch\b|XMLHttpRequest|sendBeacon|WebSocket|EventSource|RTCPeerConnection|window\.open|\bimport\s*\(|\.submit\(|\.src\s*=[^=]|\blocation\s*=[^=]/
+    .test(bookmarklet), 'no network APIs');
 
   /* Install page rendering, on a tiny inline template. */
   const template = '<a href="{{BOOKMARKLET_HREF}}">v{{VERSION}} {{SIZE_KB}} KB</a>';
@@ -107,6 +150,25 @@ async function main() {
     'placeholders filled and href attribute-escaped');
   assert.throws(() => renderInstallPage(template + '{{UNKNOWN}}', { url, version: '1' }), BuildError,
     'a leftover placeholder throws BuildError');
+
+  /* Checksum and commit: the page's checksum is the SHA-256 of bookmarklet.txt's exact bytes
+     (computed here independently), and only a full commit SHA is accepted. */
+  assert.strictEqual(bookmarkletFile(url), url + '\n');
+  assert.strictEqual(renderInstallPage('{{CHECKSUM}}', { url, version: '1' }),
+    createHash('sha256').update(url + '\n').digest('hex'), 'checksum is SHA-256 of bookmarklet.txt');
+  const fakeCommit = '0123456789abcdef0123456789abcdef01234567';
+  assert.strictEqual(renderInstallPage('{{COMMIT_SHORT}} {{COMMIT}}', { url, version: '1', commit: fakeCommit }),
+    `0123456 ${fakeCommit}`);
+  assert.throws(() => renderInstallPage('{{COMMIT}}', { url, version: '1', commit: 'main"><b>' }), BuildError,
+    'a commit that is not a full SHA throws');
+
+  /* The real template fills completely and keeps its Content-Security-Policy. */
+  const realPage = renderInstallPage(readFileSync(join(ROOT, 'site', 'index.html'), 'utf8'),
+    { url, version: '1.0.0', repoUrl: 'https://github.com/example/example', commit: fakeCommit });
+  assert(!realPage.includes('{{'), 'install page has no unfilled placeholder');
+  assert.match(realPage, /<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self';/,
+    'install page keeps its CSP');
+  assert(!/<script/i.test(realPage), 'install page has no scripts');
   console.log('built javascript: URL length: %d characters', url.length);
 
   const hits = [];
@@ -118,12 +180,11 @@ async function main() {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
 
-  const hosts = ['www.amazon.com', 'www.amazon.co.uk', 'amazon.com.evil.example'];
   const browser = await chromium.launch({
-    args: ['--no-sandbox', '--host-resolver-rules=' + hosts.map((h) => `MAP ${h} 127.0.0.1`).join(', ')],
+    args: ['--no-sandbox', '--host-resolver-rules=' + MAPPED_HOSTS.map((h) => `MAP ${h} 127.0.0.1`).join(', ')],
   });
   try {
-    const context = await browser.newContext({ acceptDownloads: true });
+    const context = await browser.newContext({ acceptDownloads: true, serviceWorkers: 'block' });
     await guardNetwork(context, port);
 
     /* ---- US storefront: full expected export. ---- */
@@ -187,6 +248,8 @@ async function main() {
     assert.strictEqual(await us.page.locator(OVERLAY).count(), 0, 'Close removes the overlay');
     assert.strictEqual(await us.page.evaluate(() => window.__likeClicked), false, '"See more like this" never clicked');
     assert.strictEqual(await us.page.evaluate(() => window.__seeMoreClicks), 1, 'real "See more" clicked exactly once');
+    assert.strictEqual(await us.page.evaluate(() => window.__elsewhereClicked), false,
+      'a "See more" link to another page is never clicked');
 
     /* ---- UK storefront: no "$" invented for a data-price fallback. ---- */
     const uk = await exportFrom(context, port, 'www.amazon.co.uk', bookmarklet);
@@ -223,18 +286,15 @@ async function main() {
     assert(hits.every((h) => h === '/cart.html'), 'the server saw only fixture page loads');
     assert.strictEqual(hits.length, 4, 'one load per page opened');
 
-    /* Positive control: a request made from page script, the way a leaking bookmarklet
-       would make one, is caught. */
-    network.phase = 'control';
+    /* Positive controls: an image request and a WebSocket made from page script, the way a
+       leaking bookmarklet would make them, are both caught. */
+    network.control = true;
     const probe = 'https://exfil.example/probe';
-    /* Wait for the failure, not the request: the guard records before it aborts, so a failed
-       request has already been recorded. The 'request' event fires before the route runs. */
-    await Promise.all([
-      plain.waitForEvent('requestfailed', (r) => r.url() === probe),
-      plain.evaluate((u) => { new Image().src = u; }, probe),
-    ]);
-    assert(network.blocked.some((r) => r.phase === 'control' && r.url === probe),
-      'the guard records a request made from page script');
+    await plain.evaluate((u) => { new Image().src = u; }, probe);
+    assert(await blockedInControl(probe), 'the guard records an image request made from page script');
+    const socket = 'wss://exfil.example/socket';
+    await plain.evaluate((u) => { new WebSocket(u); }, socket);
+    assert(await blockedInControl(socket), 'the guard records a WebSocket opened from page script');
 
     console.log('PASS: %d items, built URL %d characters', file.items.length, url.length);
   } finally {

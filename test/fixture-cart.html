@@ -110,6 +110,11 @@
     <span class="sc-product-title">Duplicate widget</span>
   </div>
 
+  <!-- Outside any item and labelled exactly "See more", but a link to another page:
+       following it would leave the cart, so it must never be clicked. It comes first, so a
+       bookmarklet that ignored the href would reach it before the real control. -->
+  <a id="see-more-elsewhere" href="/somewhere-else">See more</a>
+
   <!-- Outside any item: this is the one control the bookmarklet may click. -->
   <button id="see-more" type="button">See more</button>
 </div>
@@ -119,6 +124,12 @@
   window.__likeClicked = false;
   document.getElementById('like-this').addEventListener('click', function () {
     window.__likeClicked = true;
+  });
+  /* preventDefault keeps a wrong click observable instead of navigating the page away. */
+  window.__elsewhereClicked = false;
+  document.getElementById('see-more-elsewhere').addEventListener('click', function (event) {
+    window.__elsewhereClicked = true;
+    event.preventDefault();
   });
   window.__seeMoreClicks = 0;
   document.getElementById('see-more').addEventListener('click', function () {

@@ -15,9 +15,17 @@
    if either marker survives, rather than shipping a broken bookmark. The test runs the built
    output, not the source, so a stripping mistake fails the test too.
 
-   The install page is site/index.html with three placeholders filled in. Nothing is fetched
-   at build time, and the page loads no scripts. */
+   The install page is site/index.html with its {{PLACEHOLDERS}} filled in. Nothing is fetched
+   at build time, and the page loads no scripts.
 
+   Verifiability: the page names the commit it was built from and the SHA-256 of
+   bookmarklet.txt. The build is deterministic (no timestamps, no randomness), so running it
+   at that commit reproduces the same file and checksum. In CI the commit comes from
+   GITHUB_SHA. Locally it is `git rev-parse HEAD`, which ignores uncommitted edits, but only
+   CI's build is ever published. */
+
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, copyFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,18 +86,48 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;');
 }
 
-export function renderInstallPage(template, { url, version, repoUrl }) {
+/* The exact bytes of dist/bookmarklet.txt. The page's checksum is computed from this same
+   function, so the two can't drift apart. */
+export function bookmarkletFile(url) {
+  return url + '\n';
+}
+
+export function sha256Hex(text) {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+const COMMIT_SHA = /^[0-9a-f]{40}$/;
+
+export function renderInstallPage(template, { url, version, repoUrl, commit }) {
   let filled = template
     .replaceAll('{{BOOKMARKLET_HREF}}', escapeHtml(url))
     .replaceAll('{{VERSION}}', escapeHtml(version))
-    .replaceAll('{{SIZE_KB}}', escapeHtml((url.length / 1024).toFixed(1)));
+    .replaceAll('{{SIZE_KB}}', escapeHtml((url.length / 1024).toFixed(1)))
+    .replaceAll('{{CHECKSUM}}', sha256Hex(bookmarkletFile(url)));
   if (repoUrl) {
     filled = filled.replaceAll('{{REPO_URL}}', escapeHtml(repoUrl));
+  }
+  if (commit !== undefined) {
+    if (!COMMIT_SHA.test(commit)) {
+      throw new BuildError(`not a full git commit SHA: ${JSON.stringify(commit)}`);
+    }
+    filled = filled.replaceAll('{{COMMIT}}', commit).replaceAll('{{COMMIT_SHORT}}', commit.slice(0, 7));
   }
   if (/\{\{[A-Z_]+\}\}/.test(filled)) {
     throw new BuildError('site/index.html has a placeholder the build does not fill');
   }
   return filled;
+}
+
+/* The commit being built: GitHub Actions' GITHUB_SHA, or else the checkout's HEAD. */
+function currentCommit() {
+  const fromCi = process.env.GITHUB_SHA || '';
+  if (COMMIT_SHA.test(fromCi)) { return fromCi; }
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  } catch {
+    throw new BuildError('cannot tell which commit is being built: run inside the git checkout');
+  }
 }
 
 function main(argv) {
@@ -111,11 +149,13 @@ function main(argv) {
   if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(repoUrl)) {
     throw new BuildError('package.json needs repository.url set to the GitHub repository');
   }
+  const commit = currentCommit();
   const dist = join(ROOT, 'dist');
   mkdirSync(dist, { recursive: true });
-  writeFileSync(join(dist, 'bookmarklet.txt'), url + '\n');
+  writeFileSync(join(dist, 'bookmarklet.txt'), bookmarkletFile(url));
   const template = readFileSync(join(ROOT, 'site', 'index.html'), 'utf8');
-  writeFileSync(join(dist, 'index.html'), renderInstallPage(template, { url, version: pkg.version, repoUrl }));
+  writeFileSync(join(dist, 'index.html'),
+    renderInstallPage(template, { url, version: pkg.version, repoUrl, commit }));
   copyFileSync(join(ROOT, 'site', 'style.css'), join(dist, 'style.css'));
   process.stdout.write(`built dist/ (bookmarklet ${url.length} characters)\n`);
 }

@@ -83,10 +83,22 @@
       if (!LOAD_MORE.test(label.trim())) { continue; }
       if (el.closest('[data-asin]')) { continue; }
       if (items.some(function (item) { return item.contains(el); })) { continue; }
+      if (leavesPage(el)) { continue; }
       el.click();
       return true;
     }
     return false;
+  }
+
+  /* A link to another page is never the control we want: following it would unload the
+     cart and end the run. Only http(s) links whose address differs from this page in more
+     than the #fragment count. Links with no href, a "#" href, or a javascript: href only
+     run the page's own script, which is how a "load more" control works. */
+  function leavesPage(el) {
+    if (el.tagName !== 'A' || !el.hasAttribute('href')) { return false; }
+    var target = String(el.href || '');
+    if (!/^https?:/i.test(target)) { return false; }
+    return target.split('#')[0] !== location.href.split('#')[0];
   }
 
   /* ---------- Extracting fields ---------- */

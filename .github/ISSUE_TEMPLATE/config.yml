@@ -1,0 +1,8 @@
+# Blank issues are off so every report goes through a form that warns people not to paste
+# their Amazon cart. A cart's contents, screenshots and page source are personal data, and an
+# issue is public.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/McGullicuddy/amazon-saved-for-later-export/security/advisories/new
+    about: Please report security problems privately, not in a public issue.

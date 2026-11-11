@@ -164,6 +164,12 @@ kbd {
     white-space: nowrap;
 }
 
+/* A 64-character checksum has no break points; let it wrap anywhere rather than push the
+   page wider than a phone screen. */
+.checksum {
+    overflow-wrap: anywhere;
+}
+
 /* --- Footer ------------------------------------------------------------- */
 
 footer {

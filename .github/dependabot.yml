@@ -1,0 +1,24 @@
+# Dependabot opens a pull request when a pinned CI action or Playwright has a new release.
+# CI tests each one before it can be merged. Nothing updates on its own.
+#
+# The cooldown waits a week after a release before proposing it, so a compromised release
+# that gets pulled quickly never reaches this repository. Monthly, grouped updates keep the
+# pull requests to a few a month.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7

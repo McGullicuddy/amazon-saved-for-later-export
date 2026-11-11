@@ -24,10 +24,17 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: read # read the code; nothing else
+
+# One run per branch or pull request at a time. A new push to a pull request cancels the
+# now-outdated run. Runs on main queue up instead, so a publish is never cut off halfway.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,20 +50,23 @@ jobs:
       - run: npm run build
 
   pages:
+    name: Publish install page
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
-    # Only this job can publish, and only from main.
+    # Only this job can publish, and only from main. The github-pages environment also only
+    # accepts deployments from main (set by GitHub when Pages' source is "GitHub Actions").
     permissions:
-      contents: read
-      pages: write
-      id-token: write
+      contents: read # read the code to build from
+      pages: write # create the Pages deployment
+      id-token: write # prove to Pages that this workflow run is the one deploying
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
+    # Never cancel a deployment that has started (GitHub's own advice for Pages).
     concurrency:
       group: pages
-      cancel-in-progress: true
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

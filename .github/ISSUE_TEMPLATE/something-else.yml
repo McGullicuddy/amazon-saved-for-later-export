@@ -1,0 +1,20 @@
+name: Something else
+description: A question, an idea, or a problem that isn't about Amazon's page.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public, so please leave out anything from your Amazon account: product names, cart screenshots, page source or your exported file. For a security problem, use **Report a security problem** on the previous screen instead.
+  - type: textarea
+    id: description
+    attributes:
+      label: What's on your mind?
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This issue contains nothing from my Amazon account.
+          required: true

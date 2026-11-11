@@ -65,7 +65,7 @@ every field, and how to pick the right picture from `images`.
 | What you see | What to do |
 | --- | --- |
 | A popup: *open your Amazon cart page first* | You're not on an Amazon store. Open your cart and click the bookmark again. |
-| *No Saved for Later items found* | Make sure you're on the cart page and Saved for Later is below the cart, then click again. If it still finds nothing, Amazon may have changed its page: please [open an issue](https://github.com/McGullicuddy/amazon-saved-for-later-export/issues) and say which Amazon store you use. |
+| *No Saved for Later items found* | Make sure you're on the cart page and Saved for Later is below the cart, then click again. If it still finds nothing, Amazon may have changed its page: please [open an issue](https://github.com/McGullicuddy/amazon-saved-for-later-export/issues/new/choose). The form asks only what's needed. Don't paste your cart. |
 | Fewer items "with pictures" than you expected | Scroll down to the end of the list so Amazon loads every picture, then click again. |
 | A very long list is missing items at the end | It gives up loading after one minute. Scroll down to the end of the list, then click again. |
 | Nothing happens when you click it | Check the bookmark's URL starts with `javascript:`. If it was cut short, add it again from `bookmarklet.txt`. |
@@ -76,18 +76,28 @@ A bookmarklet runs with full access to the page you click it on, which here is y
 Amazon page. **Read the source of any bookmarklet before you install it.** This one is
 [one file](src/bookmarklet.js). Here is what it does and doesn't do:
 
-- **Sends nothing.** It makes no network requests at all. The file is built in your browser and
-  handed straight to your browser's download. The tests block and log every request the browser
-  makes while the bookmarklet runs, and fail if there is even one.
+- **Sends nothing.** The bookmarklet makes no network requests of its own. The only traffic
+  while it runs is Amazon's page loading more of your list from Amazon when it clicks "See
+  more", the same as if you had clicked it. The file is built in your browser and handed
+  straight to your browser's download. The tests block and log every request the browser makes
+  while the bookmarklet runs, and fail if the bookmarklet makes even one.
 - **Runs only on Amazon.** It checks the page's address against Amazon's own store addresses
   (amazon.com, amazon.co.uk, amazon.de and so on) and refuses to run anywhere else, including
   lookalike addresses.
-- **Clicks only "See more".** The only thing it clicks is Saved for Later's own "See more" or
-  "Load more" control. It never adds, removes or buys anything.
+- **Clicks only "See more".** The only thing it clicks is a control in the Saved for Later
+  section whose whole label is "See more" or "Load more", and never a link to another page. It
+  never adds, removes or buys anything.
 - **Needs no permissions.** It isn't a browser extension. It can't do anything until you click
   it, and it stops when it's done.
 - **What you install is what's here.** The install page is rebuilt from `src/bookmarklet.js` by
-  this repository's [GitHub Actions workflow](.github/workflows/ci.yml) on every change.
+  this repository's [GitHub Actions workflow](.github/workflows/ci.yml) on every change. The
+  page shows the commit it was built from and the SHA-256 of `bookmarklet.txt`. Running
+  `npm run build` at that commit gives a file with the same checksum.
+- **Installed copies don't change.** A bookmark is a snapshot. Later changes to this repository,
+  good or bad, never reach a bookmark you already have. To get a fix, install it again.
+
+**Found a security problem?** Please report it privately, as described in
+[SECURITY.md](SECURITY.md), not in a public issue.
 
 ## Limits
 
@@ -125,6 +135,15 @@ Two rules:
   line by line, and stops with an error if a comment marker survives.
 - **Test data stays made up.** For a new Amazon layout, add a made-up case to
   `test/fixture-cart.html`. Never paste a real cart.
+
+**Releasing.** Every push to `main` republishes the install page, so treat `main` as released.
+For a version people can refer to:
+1. Bump `version` in `package.json` and commit.
+2. Tag the commit `vX.Y.Z`.
+3. Push the commit and the tag.
+
+Dependabot proposes updates to the pinned CI actions and to Playwright. Each update arrives as a
+pull request, and CI tests it.
 
 ## License
 

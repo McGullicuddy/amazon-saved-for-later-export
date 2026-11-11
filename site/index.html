@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <!-- Content-Security-Policy: this page needs nothing but its own stylesheet. Blocking
+         everything else also means clicking the button here, rather than dragging it,
+         doesn't run the bookmarklet on this page. GitHub Pages can't send headers, so it
+         goes in a meta tag. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="A bookmark that saves your Amazon Saved for Later list as a JSON file. It runs in your browser and sends nothing anywhere." />
     <title>Saved for Later export</title>
@@ -73,22 +78,35 @@
         <section aria-labelledby="privacy-heading">
             <h2 id="privacy-heading">Privacy</h2>
             <ul>
-                <li><strong>No network requests.</strong> The bookmark reads the page and builds the file
-                    in your browser. Nothing is uploaded, and there is no server.</li>
+                <li><strong>No requests of its own.</strong> The bookmark reads the page and builds the
+                    file in your browser. Nothing is uploaded, and there is no server. The only
+                    traffic is Amazon's page loading more of your list when the bookmark clicks
+                    "See more".</li>
                 <li><strong>No permissions.</strong> It isn't an extension. It runs only when you click
                     it, and only on Amazon's own storefront addresses.</li>
                 <li><strong>Read it first.</strong> A bookmarklet runs with the same access as the page
-                    it runs on, so read the source before installing any of them. This one is
-                    <a href="{{REPO_URL}}/blob/main/src/bookmarklet.js">src/bookmarklet.js</a>, and the
-                    button above is built from it automatically on every change.</li>
+                    it runs on, so read the source before installing any of them. The button above
+                    was built from
+                    <a href="{{REPO_URL}}/blob/{{COMMIT}}/src/bookmarklet.js">this exact source</a>.</li>
+                <li><strong>Check it.</strong> Built from commit
+                    <a href="{{REPO_URL}}/tree/{{COMMIT}}"><code>{{COMMIT_SHORT}}</code></a>. The SHA-256 of
+                    <a href="bookmarklet.txt">bookmarklet.txt</a> is
+                    <code class="checksum">{{CHECKSUM}}</code>. Running <code>npm run build</code> at
+                    that commit gives the same checksum.</li>
+                <li><strong>Your copy never changes.</strong> An installed bookmark is a snapshot: later
+                    changes to the project don't reach it. To get a fix, install it again.</li>
             </ul>
+            <p class="note">
+                Found a security problem? Please report it privately, as described in
+                <a href="{{REPO_URL}}/blob/main/SECURITY.md">SECURITY.md</a>.
+            </p>
         </section>
 
         <section aria-labelledby="limits-heading">
             <h2 id="limits-heading">Limits</h2>
             <ul>
                 <li>It reads Amazon's page layout, which changes without notice. If it finds no items,
-                    <a href="{{REPO_URL}}/issues">open an issue</a>.</li>
+                    <a href="{{REPO_URL}}/issues/new/choose">open an issue</a>.</li>
                 <li>Tested on amazon.com. Other Amazon stores are accepted and should work, but are
                     untested.</li>
                 <li>Prices are what the cart showed at export time.</li>

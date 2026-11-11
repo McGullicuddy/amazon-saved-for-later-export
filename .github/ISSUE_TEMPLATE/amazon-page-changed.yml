@@ -1,0 +1,59 @@
+name: Amazon changed its page
+description: The bookmarklet finds no items, misses some, or gets something wrong.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please don't paste anything from your cart.** Issues are public. Product names, prices, screenshots of your cart, saved page source and your exported file all show what you shop for, and page source can include details of your Amazon account. None of it is needed: describe what happened in general terms instead.
+  - type: input
+    id: store
+    attributes:
+      label: Amazon store
+      placeholder: www.amazon.com
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 140 on Windows 11
+    validations:
+      required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What went wrong?
+      options:
+        - No items found
+        - Some items missing
+        - Pictures missing
+        - Prices missing or wrong
+        - Titles missing or wrong
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: panel
+    attributes:
+      label: What did the panel say?
+      description: The message in the panel at the top right, word for word.
+      placeholder: Found 12 items (3 with pictures)
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: My Saved for Later list has about 40 items.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else
+      description: Describe, don't paste. For example, "items further down the list are missing".
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This issue contains no product names, cart screenshots, page source or exported file.
+          required: true

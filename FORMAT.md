@@ -38,15 +38,32 @@ date on your computer.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `asin` | string | Amazon's product ID: 10 capital letters or digits. Unique within the file. `https://www.amazon.<store tld>/dp/<asin>` is the product page. |
+| `asin` | string | Amazon's product ID: 10 capital letters or digits. Unique within the file. `https://<store>/dp/<asin>` is the product page. |
 | `title` | string | The title as the cart shows it, with whitespace collapsed. Never cut short. It can be empty if the page had none. |
 | `price` | string or `null` | The price as displayed, with its currency, such as `"$19.99"` or `"19,99 €"`. If there's no displayed price but the item carries a numeric one, it is used instead: with `$` on amazon.com, and as a bare number elsewhere. `null` when the item shows no price (often "currently unavailable"). |
 | `priceValue` | number or `null` | The numeric price Amazon attaches to the item, for sorting or totals. `null` when missing or zero. Added in version 2. Readers that don't know it can ignore it. |
 | `images` | array of strings | Candidate picture URLs, **raw and unfiltered**. Explained below. |
 
-**Treat every string as untrusted text.** It was copied off a web page. Escape titles before
-putting them in HTML, and build links from the ASIN rather than trusting anything else in the
-file.
+## Reading the file safely
+
+Every string in the file was copied off a web page, and anyone can hand-edit a file before
+passing it on. Treat it all as untrusted input:
+
+- **HTML.** Escape titles and prices before putting them in a page. Never insert them as HTML.
+- **Inside a `<script>` tag.** If you embed the JSON in a page, escape every `<` as `<`, so
+  a title containing `</script>` can't end the tag. Serving it as a separate `.json` file avoids
+  the problem.
+- **Spreadsheets.** A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return can
+  run as a formula in Excel, Sheets or LibreOffice. When converting to CSV or XLSX, put a `'` in
+  front of such titles and prices, or use your library's escaping option.
+- **Shell commands and SQL.** Pass values as arguments or query parameters. Never paste them into a
+  command string.
+- **Links.** Build product links from the ASIN, after checking it is 10 capital letters or
+  digits, and from a `store` you have checked is an Amazon hostname. Don't take any other URL
+  from the file at face value.
+- **Unusual characters.** Titles can hold any Unicode, including zero-width and right-to-left
+  control characters. Strip them if they would confuse your display.
+- **Picture URLs.** These need the most care; see the next section.
 
 ## Picture URLs
 
@@ -84,11 +101,17 @@ Patterns seen on amazon.com in November 2026:
   small `_SS144_.png` files.
 
 A reasonable reader:
+- keeps only `https` URLs on Amazon's picture hosts: `m.media-amazon.com`, and the older
+  `images-na.ssl-images-amazon.com` and its siblings, which serve the same IDs;
 - keeps only `/images/I/` URLs, after removing any `/images/W/<experiment>` prefix;
 - ignores `.svg` files;
 - tries the candidates in order and uses the first that downloads.
 
-Older Amazon image hosts (`images-na.ssl-images-amazon.com` and others) serve the same IDs.
+**Downloading pictures on a server.** Never fetch a URL from the file just because it is there.
+Whoever made the file chose those URLs, so fetching them blindly lets them make your server
+request anything it can reach, including internal addresses. This is server-side request
+forgery. Check each URL against the host list above first. Then refuse redirects, cap the
+download size and time, and check that what arrives is really an image.
 
 ## Versions
 
